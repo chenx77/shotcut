@@ -400,6 +400,17 @@ MainWindow::MainWindow()
     connect(this, SIGNAL(serviceInChanged(int, Mlt::Service*)), m_filterController, SLOT(onServiceInChanged(int, Mlt::Service*)));
     connect(this, SIGNAL(serviceOutChanged(int, Mlt::Service*)), m_filterController, SLOT(onServiceOutChanged(int, Mlt::Service*)));
 
+    m_markersDock = new MarkersDock(this);
+    m_markersDock->hide();
+    m_markersDock->toggleViewAction()->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_6));
+    m_markersDock->setModel(m_timelineDock->markersModel());
+    ui->menuView->addAction(m_markersDock->toggleViewAction());
+    connect(m_markersDock->toggleViewAction(), SIGNAL(triggered(bool)), this, SLOT(onMarkersDockTriggered(bool)));
+    connect(ui->actionMarkers, SIGNAL(triggered()), this, SLOT(onMarkersDockTriggered()));
+    connect(m_markersDock, SIGNAL(seekRequested(int)), SLOT(seekTimeline(int)));
+    connect(m_markersDock, SIGNAL(addRequested()), m_timelineDock, SLOT(createMarker()));
+    connect(m_timelineDock, SIGNAL(markerSeeked(int)), m_markersDock, SLOT(onMarkerSelectionRequest(int)));
+
     m_keyframesDock = new KeyframesDock(m_filtersDock->qmlProducer(), this);
     m_keyframesDock->hide();
     m_keyframesDock->toggleViewAction()->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_7));
@@ -462,17 +473,6 @@ MainWindow::MainWindow()
     connect(m_jobsDock->toggleViewAction(), SIGNAL(triggered(bool)), this, SLOT(onJobsDockTriggered(bool)));
     connect(ui->actionJobs, SIGNAL(triggered()), this, SLOT(onJobsDockTriggered()));
 
-    m_markersDock = new MarkersDock(this);
-    m_markersDock->hide();
-    m_markersDock->toggleViewAction()->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_6));
-    m_markersDock->setModel(m_timelineDock->markersModel());
-    ui->menuView->addAction(m_markersDock->toggleViewAction());
-    connect(m_markersDock->toggleViewAction(), SIGNAL(triggered(bool)), this, SLOT(onMarkersDockTriggered(bool)));
-    connect(ui->actionMarkers, SIGNAL(triggered()), this, SLOT(onMarkersDockTriggered()));
-    connect(m_markersDock, SIGNAL(seekRequested(int)), SLOT(seekTimeline(int)));
-    connect(m_markersDock, SIGNAL(addRequested()), m_timelineDock, SLOT(createMarker()));
-    connect(m_timelineDock, SIGNAL(markerSeeked(int)), m_markersDock, SLOT(onMarkerSelectionRequest(int)));
-
     addDockWidget(Qt::LeftDockWidgetArea, m_propertiesDock);
     addDockWidget(Qt::RightDockWidgetArea, m_recentDock);
     addDockWidget(Qt::LeftDockWidgetArea, m_playlistDock);
@@ -482,7 +482,7 @@ MainWindow::MainWindow()
     addDockWidget(Qt::RightDockWidgetArea, m_historyDock);
     addDockWidget(Qt::LeftDockWidgetArea, m_encodeDock);
     addDockWidget(Qt::RightDockWidgetArea, m_jobsDock);
-    addDockWidget(Qt::RightDockWidgetArea, m_markersDock);
+    splitDockWidget(m_timelineDock, m_markersDock, Qt::Horizontal);
     tabifyDockWidget(m_propertiesDock, m_playlistDock);
     tabifyDockWidget(m_playlistDock, m_filtersDock);
     tabifyDockWidget(m_filtersDock, m_encodeDock);
@@ -2041,7 +2041,13 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
         }
         break;
     case Qt::Key_R:
-        if (event->modifiers() & Qt::ControlModifier) {
+        if (event->modifiers() & Qt::AltModifier && event->modifiers() & Qt::ShiftModifier) {
+            Settings.setTimelineRippleAllTracks(!Settings.timelineRipple());
+            Settings.setTimelineRipple(!Settings.timelineRipple());
+            Settings.setTimelineRippleMarkers(!Settings.timelineRippleMarkers());
+        } else if (event->modifiers() & Qt::AltModifier && !(event->modifiers() & Qt::ControlModifier) && !(event->modifiers() & Qt::ShiftModifier)) {
+            Settings.setTimelineRippleMarkers(!Settings.timelineRippleMarkers());
+        } else if (event->modifiers() & Qt::ControlModifier) {
             if (event->modifiers() & Qt::AltModifier) {
                 Settings.setTimelineRippleAllTracks(!Settings.timelineRippleAllTracks());
             } else if (event->modifiers() & Qt::ShiftModifier) {
